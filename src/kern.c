@@ -117,6 +117,7 @@ void k_set_if(uint32_t ifa, int ifidx) {
 }
 
 void k_join(struct IfDesc *ifd, uint32_t grp) {
+
 #ifdef HAVE_STRUCT_IP_MREQN
     struct ip_mreqn mreq;
     mreq.imr_address.s_addr = ifd->InAdr.s_addr;
@@ -126,6 +127,14 @@ void k_join(struct IfDesc *ifd, uint32_t grp) {
     mreq.imr_interface.s_addr = ifd->InAdr.s_addr;
 #endif
     mreq.imr_multiaddr.s_addr = grp;
+
+// LUISPA's dirty Hack - before joining, I'll leave the group to clear any existing membership
+// With M+ IPTV Service, upstream is NOT sending membership query's, so I need this hack
+// to emulate every Deco behaviour downstream.
+    my_log(LOG_NOTICE, 0, ">>>>>> Call k-leave %s on interface %s. <<<<<<<<<<<<<<<<<<< M+ dirty hack !!", inetFmt(grp, s1), ifd->Name);
+    k_leave(ifd, grp);
+//
+//
 
     my_log(LOG_NOTICE, 0, "Joining group %s on interface %s", inetFmt(grp, s1), ifd->Name);
 

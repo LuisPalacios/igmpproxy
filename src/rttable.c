@@ -405,10 +405,14 @@ int insertRoute(uint32_t group, int ifx, uint32_t src) {
     }
 
     // Send join message upstream, if the route has no joined flag...
-    if(croute->upstrState != ROUTESTATE_JOINED) {
+// LUISPA's dirty Hack - Force a Join.
+// With M+ IPTV Service, upstream is NOT sending membership query's, so I need this hack
+// to emulate every Deco behaviour downstream. See also kern.c
+// I comment the "if" so forcing the Join...
+//    if(croute->upstrState != ROUTESTATE_JOINED) {
         // Send Join request upstream
         sendJoinLeaveUpstream(croute, 1);
-    }
+//    }
 
     logRouteTable("Insert Route");
 
