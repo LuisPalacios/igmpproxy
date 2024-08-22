@@ -114,13 +114,13 @@ int loadConfig(char *configFile) {
 
     // Test config file reader...
     if(!openConfigFile(configFile)) {
-        my_log(LOG_ERR, 0, "Unable to open configfile from %s", configFile);
+        my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Unable to open configfile from %s", configFile);
     }
 
     // Get first token...
     token = nextConfigToken();
     if(token == NULL) {
-        my_log(LOG_ERR, 0, "Config file was empty.");
+        my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Config file was empty.");
     }
 
     // Loop until all configuration is read.
@@ -128,21 +128,21 @@ int loadConfig(char *configFile) {
         // Check token...
         if(strcmp("phyint", token)==0) {
             // Got a phyint token... Call phyint parser
-            my_log(LOG_DEBUG, 0, "Config: Got a phyint token.");
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: Got a phyint token.");
             tmpPtr = parsePhyintToken();
             if(tmpPtr == NULL) {
                 // Unparsable token... Exit...
                 closeConfigFile();
-                my_log(LOG_WARNING, 0, "Unknown token '%s' in configfile", token);
+                my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "Unknown token '%s' in configfile", token);
                 return 0;
             } else {
 
-                my_log(LOG_DEBUG, 0, "IF name : %s", tmpPtr->name);
-                my_log(LOG_DEBUG, 0, "Next ptr : %x", tmpPtr->next);
-                my_log(LOG_DEBUG, 0, "Ratelimit : %d", tmpPtr->ratelimit);
-                my_log(LOG_DEBUG, 0, "Threshold : %d", tmpPtr->threshold);
-                my_log(LOG_DEBUG, 0, "State : %d", tmpPtr->state);
-                my_log(LOG_DEBUG, 0, "Allowednet ptr : %x", tmpPtr->allowednets);
+                my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "IF name : %s", tmpPtr->name);
+                my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Next ptr : %x", tmpPtr->next);
+                my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Ratelimit : %d", tmpPtr->ratelimit);
+                my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Threshold : %d", tmpPtr->threshold);
+                my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "State : %d", tmpPtr->state);
+                my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Allowednet ptr : %x", tmpPtr->allowednets);
 
                 // Insert config, and move temppointer to next location...
                 *currPtr = tmpPtr;
@@ -151,7 +151,7 @@ int loadConfig(char *configFile) {
         }
         else if(strcmp("quickleave", token)==0) {
             // Got a quickleave token....
-            my_log(LOG_DEBUG, 0, "Config: Quick leave mode enabled.");
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: Quick leave mode enabled.");
             commonConfig.fastUpstreamLeave = 1;
 
             // Read next token...
@@ -161,16 +161,16 @@ int loadConfig(char *configFile) {
         else if(strcmp("hashtablesize", token)==0) {
             // Got a hashtablesize token...
             token = nextConfigToken();
-            my_log(LOG_DEBUG, 0, "Config: hashtablesize for quickleave is %s.", token);
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: hashtablesize for quickleave is %s.", token);
             if(!commonConfig.fastUpstreamLeave) {
                 closeConfigFile();
-                my_log(LOG_ERR, 0, "Config: hashtablesize is specified but quickleave not enabled.");
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Config: hashtablesize is specified but quickleave not enabled.");
                 return 0;
             }
             int intToken = atoi(token);
             if(intToken < 1 || intToken > 536870912) {
                 closeConfigFile();
-                my_log(LOG_ERR, 0, "Config: hashtablesize must be between 1 and 536870912 bytes.");
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Config: hashtablesize must be between 1 and 536870912 bytes.");
                 return 0;
             }
             commonConfig.downstreamHostsHashTableSize = intToken;
@@ -181,7 +181,7 @@ int loadConfig(char *configFile) {
         }
         else if(strcmp("defaultdown", token)==0) {
             // Got a defaultdown token...
-            my_log(LOG_DEBUG, 0, "Config: interface Default as down stream.");
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: interface Default as down stream.");
             commonConfig.defaultInterfaceState = IF_STATE_DOWNSTREAM;
 
             // Read next token...
@@ -190,7 +190,7 @@ int loadConfig(char *configFile) {
         }
         else if(strcmp("rescanvif", token)==0) {
             // Got a rescanvif token...
-            my_log(LOG_DEBUG, 0, "Config: Need detect new interface.");
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: Need detect new interface.");
             commonConfig.rescanVif = 1;
 
             // Read next token...
@@ -203,9 +203,9 @@ int loadConfig(char *configFile) {
 
             if (snprintf(commonConfig.chroot, sizeof(commonConfig.chroot), "%s",
               token) >= (int)sizeof(commonConfig.chroot))
-                my_log(LOG_ERR, 0, "Config: chroot is truncated");
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Config: chroot is truncated");
 
-            my_log(LOG_DEBUG, 0, "Config: chroot set to %s",
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: chroot set to %s",
               commonConfig.chroot);
             token = nextConfigToken();
             continue;
@@ -216,15 +216,15 @@ int loadConfig(char *configFile) {
 
             if (snprintf(commonConfig.user, sizeof(commonConfig.user), "%s",
               token) >= (int)sizeof(commonConfig.user))
-                my_log(LOG_ERR, 0, "Config: user is truncated");
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Config: user is truncated");
 
-            my_log(LOG_DEBUG, 0, "Config: user set to %s", commonConfig.user);
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: user set to %s", commonConfig.user);
             token = nextConfigToken();
             continue;
         } else {
             // Unparsable token... Exit...
             closeConfigFile();
-            my_log(LOG_WARNING, 0, "Unknown token '%s' in configfile", token);
+            my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "Unknown token '%s' in configfile", token);
             return 0;
         }
         // Get token that was not recognized by phyint parser.
@@ -261,7 +261,7 @@ void configureVifs(void) {
                 if(strcmp(Dp->Name, confPtr->name)==0) {
                     struct SubnetList *vifLast;
 
-                    my_log(LOG_DEBUG, 0, "Found config for %s", Dp->Name);
+                    my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Found config for %s", Dp->Name);
 
 
                     // Set the VIF state
@@ -301,12 +301,12 @@ struct vifconfig *parsePhyintToken(void) {
     // Sanitycheck the name...
     if(token == NULL) return NULL;
     if(strlen(token) >= IF_NAMESIZE) return NULL;
-    my_log(LOG_DEBUG, 0, "Config: IF: Config for interface %s.", token);
+    my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: IF: Config for interface %s.", token);
 
     // Allocate memory for configuration...
     tmpPtr = (struct vifconfig*)malloc(sizeof(struct vifconfig));
     if(tmpPtr == NULL) {
-        my_log(LOG_ERR, 0, "Out of memory.");
+        my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Out of memory.");
     }
 
     // Set default values...
@@ -320,7 +320,7 @@ struct vifconfig *parsePhyintToken(void) {
     // Make a copy of the token to store the IF name
     tmpPtr->name = strdup( token );
     if(tmpPtr->name == NULL) {
-        my_log(LOG_ERR, 0, "Out of memory.");
+        my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Out of memory.");
     }
 
     // Set the altnet pointer to the allowednets pointer.
@@ -333,12 +333,12 @@ struct vifconfig *parsePhyintToken(void) {
         if(strcmp("altnet", token)==0) {
             // Altnet...
             token = nextConfigToken();
-            my_log(LOG_DEBUG, 0, "Config: IF: Got altnet token %s.",token);
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: IF: Got altnet token %s.",token);
 
             *anetPtr = parseSubnetAddress(token);
             if(*anetPtr == NULL) {
                 parseError = 1;
-                my_log(LOG_WARNING, 0, "Unable to parse subnet address.");
+                my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "Unable to parse subnet address.");
                 break;
             } else {
                 anetPtr = &(*anetPtr)->next;
@@ -347,13 +347,13 @@ struct vifconfig *parsePhyintToken(void) {
         else if(strcmp("whitelist", token)==0) {
             // Whitelist
             token = nextConfigToken();
-            my_log(LOG_DEBUG, 0, "Config: IF: Got whitelist token %s.", token);
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: IF: Got whitelist token %s.", token);
 
             *agrpPtr = parseSubnetAddress(token);
             if(*agrpPtr == NULL) {
                 free(tmpPtr->name);
                 free(tmpPtr);
-                my_log(LOG_ERR, 0, "Unable to parse subnet address.");
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Unable to parse subnet address.");
             } else {
                 (*agrpPtr)->allow = true;
                 agrpPtr = &(*agrpPtr)->next;
@@ -362,13 +362,13 @@ struct vifconfig *parsePhyintToken(void) {
         else if(strcmp("blacklist", token)==0) {
             // Blacklist
             token = nextConfigToken();
-            my_log(LOG_DEBUG, 0, "Config: IF: Got blacklist token %s.", token);
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: IF: Got blacklist token %s.", token);
 
             *agrpPtr = parseSubnetAddress(token);
             if(*agrpPtr == NULL) {
                 free(tmpPtr->name);
                 free(tmpPtr);
-                my_log(LOG_ERR, 0, "Unable to parse subnet address.");
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Unable to parse subnet address.");
             } else {
                 (*agrpPtr)->allow = false;
                 agrpPtr = &(*agrpPtr)->next;
@@ -376,26 +376,26 @@ struct vifconfig *parsePhyintToken(void) {
         }
         else if(strcmp("upstream", token)==0) {
             // Upstream
-            my_log(LOG_DEBUG, 0, "Config: IF: Got upstream token.");
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: IF: Got upstream token.");
             tmpPtr->state = IF_STATE_UPSTREAM;
         }
         else if(strcmp("downstream", token)==0) {
             // Downstream
-            my_log(LOG_DEBUG, 0, "Config: IF: Got downstream token.");
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: IF: Got downstream token.");
             tmpPtr->state = IF_STATE_DOWNSTREAM;
         }
         else if(strcmp("disabled", token)==0) {
             // Disabled
-            my_log(LOG_DEBUG, 0, "Config: IF: Got disabled token.");
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: IF: Got disabled token.");
             tmpPtr->state = IF_STATE_DISABLED;
         }
         else if(strcmp("ratelimit", token)==0) {
             // Ratelimit
             token = nextConfigToken();
-            my_log(LOG_DEBUG, 0, "Config: IF: Got ratelimit token '%s'.", token);
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: IF: Got ratelimit token '%s'.", token);
             tmpPtr->ratelimit = atoi( token );
             if(tmpPtr->ratelimit < 0) {
-                my_log(LOG_WARNING, 0, "Ratelimit must be 0 or more.");
+                my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "Ratelimit must be 0 or more.");
                 parseError = 1;
                 break;
             }
@@ -403,10 +403,10 @@ struct vifconfig *parsePhyintToken(void) {
         else if(strcmp("threshold", token)==0) {
             // Threshold
             token = nextConfigToken();
-            my_log(LOG_DEBUG, 0, "Config: IF: Got threshold token '%s'.", token);
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: IF: Got threshold token '%s'.", token);
             tmpPtr->threshold = atoi( token );
             if(tmpPtr->threshold <= 0 || tmpPtr->threshold > 255) {
-                my_log(LOG_WARNING, 0, "Threshold must be between 1 and 255.");
+                my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "Threshold must be between 1 and 255.");
                 parseError = 1;
                 break;
             }
@@ -446,7 +446,7 @@ struct SubnetList *parseSubnetAddress(char *addrstr) {
     if(tmpStr != NULL) {
         int bitcnt = atoi(tmpStr);
         if(bitcnt < 0 || bitcnt > 32) {
-            my_log(LOG_WARNING, 0, "The bits part of the address is invalid : %d.",tmpStr);
+            my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "The bits part of the address is invalid : %d.",tmpStr);
             return NULL;
         }
 
@@ -457,7 +457,7 @@ struct SubnetList *parseSubnetAddress(char *addrstr) {
     }
 
     if(addr == (uint32_t)-1) {
-        my_log(LOG_WARNING, 0, "Unable to parse address token '%s'.", addrstr);
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "Unable to parse address token '%s'.", addrstr);
         return NULL;
     }
 
@@ -466,7 +466,7 @@ struct SubnetList *parseSubnetAddress(char *addrstr) {
     tmpSubnet->subnet_mask = ntohl(mask);
     tmpSubnet->next = NULL;
 
-    my_log(LOG_DEBUG, 0, "Config: IF: Altnet: Parsed altnet to %s.",
+    my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Config: IF: Altnet: Parsed altnet to %s.",
             inetFmts(tmpSubnet->subnet_addr, tmpSubnet->subnet_mask,s1));
 
     return tmpSubnet;

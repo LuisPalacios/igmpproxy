@@ -127,19 +127,19 @@ int main( int ArgCn, char *ArgVc[] ) {
     openlog("igmpproxy", LOG_PID, LOG_USER);
 
     // Write debug notice with file path...
-    my_log(LOG_DEBUG, 0, "Searching for config file at '%s'" , configFilePath);
+    my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Searching for config file at '%s'" , configFilePath);
 
     do {
 
         // Loads the config file...
         if( ! loadConfig( configFilePath ) ) {
-            my_log(LOG_ERR, 0, "Unable to load config file...");
+            my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Unable to load config file...");
             break;
         }
 
         // Initializes the deamon.
         if ( !igmpProxyInit() ) {
-            my_log(LOG_ERR, 0, "Unable to initialize IGMPproxy.");
+            my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Unable to initialize IGMPproxy.");
             break;
         }
 
@@ -147,7 +147,7 @@ int main( int ArgCn, char *ArgVc[] ) {
         if (!NotAsDaemon) {
             devnull = open("/dev/null", O_RDWR);
             if (devnull == -1)
-                my_log(LOG_ERR, 0, "unable to open /dev/null");
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "unable to open /dev/null");
         }
 
         config = getCommonConfig();
@@ -155,19 +155,19 @@ int main( int ArgCn, char *ArgVc[] ) {
         if (config->user[0]) {
             pw = getpwnam(config->user);
             if (pw == NULL)
-                my_log(LOG_ERR, 0, "unknown user %s", config->user);
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "unknown user %s", config->user);
         }
 
         if (config->chroot[0])
             if (chroot(config->chroot) != 0 || chdir("/") != 0)
-                my_log(LOG_ERR, 0, "unable to chroot to %s",
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "unable to chroot to %s",
                   config->chroot);
 
         if (pw != NULL)
             if (setgroups(1, &pw->pw_gid) != 0 ||
               setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) != 0 ||
               setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid) != 0)
-                my_log(LOG_ERR, 0, "unable to drop privileges to %s",
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "unable to drop privileges to %s",
                   config->user);
 
         if ( !NotAsDaemon ) {
@@ -179,7 +179,7 @@ int main( int ArgCn, char *ArgVc[] ) {
             if ( close( 0 ) < 0 || close( 1 ) < 0 || close( 2 ) < 0 ||
               dup2( devnull, 0 ) < 0 || dup2( devnull, 1 ) < 0 ||
               dup2( devnull, 2 ) < 0 || setpgid( 0, 0 ) < 0 ) {
-                my_log( LOG_ERR, errno, "failed to detach daemon" );
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "failed to detach daemon" );
             }
             if (devnull > 2)
                 close(devnull);
@@ -194,7 +194,7 @@ int main( int ArgCn, char *ArgVc[] ) {
     } while ( false );
 
     // Inform that we are exiting.
-    my_log(LOG_INFO, 0, "Shutdown complete....");
+    my_log(LOG_INFO, COLOR_CODE_WHITE, 0, "Shutdown complete....");
 
     exit(0);
 }
@@ -220,8 +220,8 @@ int igmpProxyInit(void) {
 
     switch ( Err = enableMRouter() ) {
     case 0: break;
-    case EADDRINUSE: my_log( LOG_ERR, EADDRINUSE, "MC-Router API already in use" ); break;
-    default: my_log( LOG_ERR, Err, "MRT_INIT failed" );
+    case EADDRINUSE: my_log( LOG_ERR, COLOR_CODE_BRIGHT_RED, EADDRINUSE, "MC-Router API already in use" ); break;
+    default: my_log( LOG_ERR, COLOR_CODE_BRIGHT_RED, Err, "MRT_INIT failed" );
     }
 
     /* create VIFs for all IP, non-loop interfaces
@@ -243,11 +243,11 @@ int igmpProxyInit(void) {
                 if(Dp->state == IF_STATE_UPSTREAM) {
                     if (upsvifcount < MAX_UPS_VIFS -1)
                     {
-                        my_log(LOG_DEBUG, 0, "Found upstrem IF #%d, will assing as upstream Vif %d",
+                        my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Found upstrem IF #%d, will assing as upstream Vif %d",
                             upsvifcount, Ix);
                         upStreamIfIdx[upsvifcount++] = Ix;
                     } else {
-                        my_log(LOG_ERR, 0, "Cannot set VIF #%d as upstream as well. Mac upstream Vif count is %d",
+                        my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Cannot set VIF #%d as upstream as well. Mac upstream Vif count is %d",
                             Ix, MAX_UPS_VIFS);
                     }
                 }
@@ -260,7 +260,7 @@ int igmpProxyInit(void) {
         }
 
         if(0 == upsvifcount) {
-            my_log(LOG_ERR, 0, "There must be at least 1 Vif as upstream.");
+            my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "There must be at least 1 Vif as upstream.");
         }
     }
 
@@ -270,6 +270,9 @@ int igmpProxyInit(void) {
     initRouteTable();
     // Initialize timer
     callout_init();
+    // LUIS
+    // Initialize my timer
+    setupTimerNextDecoJoinsUpstream(10); // Call this with the desired interval in seconds
 
     return 1;
 }
@@ -278,7 +281,7 @@ int igmpProxyInit(void) {
 *   Clean up all on exit...
 */
 void igmpProxyCleanUp(void) {
-    my_log( LOG_DEBUG, 0, "clean handler called" );
+    my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "clean handler called" );
 
     free_all_callouts();    // No more timeouts.
     clearAllRoutes();       // Remove all routes.
@@ -315,7 +318,7 @@ void igmpProxyRun(void) {
         if (sighandled) {
             if (sighandled & GOT_SIGINT) {
                 sighandled &= ~GOT_SIGINT;
-                my_log(LOG_NOTICE, 0, "Got a interrupt signal. Exiting.");
+                my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "Got a interrupt signal. Exiting.");
                 break;
             }
         }
@@ -344,7 +347,7 @@ void igmpProxyRun(void) {
 
         // log and ignore failures
         if( Rt < 0 ) {
-            my_log( LOG_WARNING, errno, "select() failure" );
+            my_log(LOG_WARNING, COLOR_CODE_WHITE, errno, "select() failure" );
             continue;
         }
         else if( Rt > 0 ) {
@@ -355,7 +358,7 @@ void igmpProxyRun(void) {
                 recvlen = recvfrom(MRouterFD, recv_buf, RECV_BUF_SIZE,
                                    0, NULL, &dummy);
                 if (recvlen < 0) {
-                    if (errno != EINTR) my_log(LOG_ERR, errno, "recvfrom");
+                    if (errno != EINTR) my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "recvfrom");
                     continue;
                 }
 

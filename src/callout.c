@@ -101,7 +101,7 @@ void age_callout_queue(int elapsed_time) {
     /* process existing events */
     for (ptr = _queue; ptr; ptr = _queue, i++) {
         _queue = _queue->next;
-        my_log(LOG_DEBUG, 0, "About to call timeout %d (#%d)", ptr->id, i);
+        my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "About to call timeout %d (#%d)", ptr->id, i);
         if (ptr->func)
              ptr->func(ptr->data);
         free(ptr);
@@ -115,7 +115,7 @@ void age_callout_queue(int elapsed_time) {
 int timer_nextTimer(void) {
     if (queue) {
         if (queue->time < 0) {
-            my_log(LOG_WARNING, 0, "timer_nextTimer top of queue says %d", 
+            my_log(LOG_WARNING, COLOR_CODE_BRIGHT_YELLOW, 0, "timer_nextTimer top of queue says %d", 
                 queue->time);
             return 0;
         }
@@ -137,7 +137,7 @@ int timer_setTimer(int delay, timer_f action, void *data) {
     /* create a node */
     node = (struct timeOutQueue *)malloc(sizeof(struct timeOutQueue));
     if (node == 0) {
-        my_log(LOG_WARNING, 0, "Malloc Failed in timer_settimer\n");
+        my_log(LOG_WARNING, COLOR_CODE_BRIGHT_YELLOW, 0, "Malloc Failed in timer_settimer\n");
         return -1;
     }
     node->func = action;
@@ -167,7 +167,7 @@ int timer_setTimer(int delay, timer_f action, void *data) {
                     prev->next = node;
                 }
                 ptr->time -= node->time;
-                my_log(LOG_DEBUG, 0,
+                my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0,
                     "Created timeout %d (#%d) - delay %d secs",
                     node->id, i, node->time);
                 debugQueue();
@@ -182,7 +182,7 @@ int timer_setTimer(int delay, timer_f action, void *data) {
         }
         prev->next = node;
     }
-    my_log(LOG_DEBUG, 0, "Created timeout %d (#%d) - delay %d secs",
+    my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Created timeout %d (#%d) - delay %d secs",
             node->id, i, node->time);
     debugQueue();
 
@@ -242,7 +242,7 @@ int timer_clearTimer(int  timer_id) {
 
             if (ptr->data)
                 free(ptr->data);
-            my_log(LOG_DEBUG, 0, "deleted timer %d (#%d)", ptr->id, i);
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "deleted timer %d (#%d)", ptr->id, i);
             free(ptr);
             debugQueue();
             return 1;
@@ -252,7 +252,7 @@ int timer_clearTimer(int  timer_id) {
         i++;
     }
     // If we get here, the timer was not deleted.
-    my_log(LOG_DEBUG, 0, "failed to delete timer %d (#%d)", timer_id, i);
+    my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "failed to delete timer %d (#%d)", timer_id, i);
     debugQueue();
     return 0;
 }
@@ -264,6 +264,6 @@ static void debugQueue(void) {
     struct timeOutQueue  *ptr;
 
     for (ptr = queue; ptr; ptr = ptr->next) {
-        my_log(LOG_DEBUG, 0, "(Id:%d, Time:%d) ", ptr->id, ptr->time);
+        my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "(Id:%d, Time:%d) ", ptr->id, ptr->time);
     }
 }

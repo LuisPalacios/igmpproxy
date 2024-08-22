@@ -112,7 +112,7 @@ void acceptIgmp(int recvlen) {
     int ipdatalen, iphdrlen, ngrec, nsrcs, i;
 
     if (recvlen < (int)sizeof(struct ip)) {
-        my_log(LOG_WARNING, 0,
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, 0,
             "received packet too short (%u bytes) for IP header", recvlen);
         return;
     }
@@ -128,7 +128,7 @@ void acceptIgmp(int recvlen) {
      */
     if (ip->ip_p == 0) {
         if (src == 0 || dst == 0) {
-            my_log(LOG_WARNING, 0, "kernel request not accurate");
+            my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "kernel request not accurate");
         }
         else {
             struct IfDesc *checkVIF;
@@ -140,27 +140,27 @@ void acceptIgmp(int recvlen) {
                     // Check if the source address matches a valid address on upstream vif.
                     checkVIF = getIfByIx( upStreamIfIdx[i] );
                     if(checkVIF == 0) {
-                        my_log(LOG_ERR, 0, "Upstream VIF was null.");
+                        my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Upstream VIF was null.");
                         return;
                     }
                     else if(src == checkVIF->InAdr.s_addr) {
-                        my_log(LOG_NOTICE, 0, "Route activation request from %s for %s is from myself. Ignoring.",
+                        my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "Route activation request from %s for %s is from myself. Ignoring.",
                             inetFmt(src, s1), inetFmt(dst, s2));
                         return;
                     }
                     else if(!isAdressValidForIf(checkVIF, src)) {
                         struct IfDesc *downVIF = getIfByAddress(src);
                         if (downVIF && downVIF->state & IF_STATE_DOWNSTREAM) {
-                            my_log(LOG_NOTICE, 0, "The source address %s for group %s is from downstream VIF[%d]. Ignoring.",
+                            my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "The source address %s for group %s is from downstream VIF[%d]. Ignoring.",
                                 inetFmt(src, s1), inetFmt(dst, s2), i);
                         } else {
-                            my_log(LOG_WARNING, 0, "The source address %s for group %s, is not in any valid net for upstream VIF[%d].",
+                            my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "The source address %s for group %s, is not in any valid net for upstream VIF[%d].",
                                 inetFmt(src, s1), inetFmt(dst, s2), i);
                         }
                     } else {
                         // Activate the route.
                         int vifindex = checkVIF->index;
-                        my_log(LOG_DEBUG, 0, "Route activate request from %s to %s on VIF[%d]",
+                        my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Route activate request from %s to %s on VIF[%d]",
                             inetFmt(src,s1), inetFmt(dst,s2), vifindex);
                         activateRoute(dst, src, vifindex);
                         i = MAX_UPS_VIFS;
@@ -177,7 +177,7 @@ void acceptIgmp(int recvlen) {
     ipdatalen = ip_data_len(ip);
 
     if (iphdrlen + ipdatalen != recvlen) {
-        my_log(LOG_WARNING, 0,
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, 0,
             "received packet from %s shorter (%u bytes) than hdr+data length (%u+%u)",
             inetFmt(src, s1), recvlen, iphdrlen, ipdatalen);
         return;
@@ -186,13 +186,13 @@ void acceptIgmp(int recvlen) {
     igmp = (struct igmp *)(recv_buf + iphdrlen);
     if ((ipdatalen < IGMP_MINLEN) ||
         (igmp->igmp_type == IGMP_V3_MEMBERSHIP_REPORT && ipdatalen <= IGMPV3_MINLEN)) {
-        my_log(LOG_WARNING, 0,
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, 0,
             "received IP data field too short (%u bytes) for IGMP, from %s",
             ipdatalen, inetFmt(src, s1));
         return;
     }
 
-    my_log(LOG_NOTICE, 0, "RECV %s from %-15s to %s",
+    my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "RECV %s from %-15s to %s",
         igmpPacketKind(igmp->igmp_type, igmp->igmp_code),
         inetFmt(src, s1), inetFmt(dst, s2) );
 
@@ -227,7 +227,7 @@ void acceptIgmp(int recvlen) {
             case IGMPV3_BLOCK_OLD_SOURCES:
                 break;
             default:
-                my_log(LOG_INFO, 0,
+                my_log(LOG_INFO, COLOR_CODE_WHITE, 0,
                     "ignoring unknown IGMPv3 group record type %x from %s to %s for %s",
                     grec->grec_type, inetFmt(src, s1), inetFmt(dst, s2),
                     inetFmt(group, s3));
@@ -247,7 +247,7 @@ void acceptIgmp(int recvlen) {
         return;
 
     default:
-        my_log(LOG_INFO, 0,
+        my_log(LOG_INFO, COLOR_CODE_WHITE, 0,
             "ignoring unknown IGMP message type %x from %s to %s",
             igmp->igmp_type, inetFmt(src, s1),
             inetFmt(dst, s2));
@@ -324,9 +324,9 @@ void sendIgmp(uint32_t src, uint32_t dst, int type, int code, uint32_t group, in
                IP_HEADER_RAOPT_LEN + IGMP_MINLEN + datalen, 0,
                (struct sockaddr *)&sdst, sizeof(sdst)) < 0) {
         if (errno == ENETDOWN)
-            my_log(LOG_ERR, errno, "Sender VIF was down.");
+            my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "Sender VIF was down.");
         else
-            my_log(LOG_INFO, errno,
+            my_log(LOG_INFO, COLOR_CODE_WHITE, errno,
                 "sendto to %s on %s",
                 inetFmt(dst, s1), inetFmt(src, s2));
     }
@@ -339,7 +339,7 @@ void sendIgmp(uint32_t src, uint32_t dst, int type, int code, uint32_t group, in
         k_set_if(INADDR_ANY, 0);
     }
 
-    my_log(LOG_DEBUG, 0, "SENT %s from %-15s to %s",
+    my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "SENT %s from %-15s to %s",
         igmpPacketKind(type, code),
         src == INADDR_ANY ? "INADDR_ANY" : inetFmt(src, s1), inetFmt(dst, s2));
 }

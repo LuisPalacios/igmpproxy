@@ -63,7 +63,7 @@ int enableMRouter(void)
     int Va = 1;
 
     if ( (MRouterFD  = socket(AF_INET, SOCK_RAW, IPPROTO_IGMP)) < 0 )
-        my_log( LOG_ERR, errno, "IGMP socket open" );
+        my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "IGMP socket open" );
 
     if ( setsockopt( MRouterFD, IPPROTO_IP, MRT_INIT,
                      (void *)&Va, sizeof( Va ) ) )
@@ -79,10 +79,10 @@ int enableMRouter(void)
 void disableMRouter(void)
 {
     if ( setsockopt( MRouterFD, IPPROTO_IP, MRT_DONE, NULL, 0 ) < 0 )
-        my_log( LOG_WARNING, errno, "MRT_DONE" );
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, errno, "MRT_DONE" );
 
     if ( close( MRouterFD ) < 0 )
-        my_log( LOG_WARNING, errno, "IGMP socket close" );
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, errno, "IGMP socket close" );
 
     MRouterFD = -1;
 }
@@ -99,12 +99,12 @@ void delVIF( struct IfDesc *IfDp )
 
     VifCtl.vifc_vifi = IfDp->index;
 
-    my_log( LOG_NOTICE, 0, "removing VIF, Ix %d Fl 0x%x IP 0x%08x %s, Threshold: %d, Ratelimit: %d",
+    my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "removing VIF, Ix %d Fl 0x%x IP 0x%08x %s, Threshold: %d, Ratelimit: %d",
          IfDp->index, IfDp->Flags, IfDp->InAdr.s_addr, IfDp->Name, IfDp->threshold, IfDp->ratelimit);
 
     if ( setsockopt( MRouterFD, IPPROTO_IP, MRT_DEL_VIF,
                      (char *)&VifCtl, sizeof( VifCtl ) ) )
-        my_log( LOG_WARNING, errno, "MRT_DEL_VIF" );
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, errno, "MRT_DEL_VIF" );
 }
 
 /*
@@ -126,7 +126,7 @@ void addVIF( struct IfDesc *IfDp )
     /* no more space
      */
     if ( VifDp >= VCEP( VifDescVc ) )
-        my_log( LOG_ERR, ENOMEM, "addVIF, out of VIF space" );
+        my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, ENOMEM, "addVIF, out of VIF space" );
 
     VifDp->IfDp = IfDp;
 
@@ -147,20 +147,20 @@ void addVIF( struct IfDesc *IfDp )
     // Set the index...
     VifDp->IfDp->index = VifCtl.vifc_vifi;
 
-    my_log( LOG_NOTICE, 0, "adding VIF, Ix %d Fl 0x%x IP 0x%08x %s, Threshold: %d, Ratelimit: %d",
+    my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "adding VIF, Ix %d Fl 0x%x IP 0x%08x %s, Threshold: %d, Ratelimit: %d",
          VifCtl.vifc_vifi, VifCtl.vifc_flags,  VifCtl.vifc_lcl_addr.s_addr, VifDp->IfDp->Name,
          VifCtl.vifc_threshold, VifCtl.vifc_rate_limit);
 
     struct SubnetList *currSubnet;
     for(currSubnet = IfDp->allowednets; currSubnet; currSubnet = currSubnet->next) {
-        my_log(LOG_DEBUG, 0, "        Network for [%s] : %s",
+        my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "        Network for [%s] : %s",
             IfDp->Name,
             inetFmts(currSubnet->subnet_addr, currSubnet->subnet_mask, s1));
     }
 
     if ( setsockopt( MRouterFD, IPPROTO_IP, MRT_ADD_VIF,
                      (char *)&VifCtl, sizeof( VifCtl ) ) )
-        my_log( LOG_ERR, errno, "MRT_ADD_VIF" );
+        my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "MRT_ADD_VIF" );
 
 }
 
@@ -187,7 +187,7 @@ int addMRoute( struct MRouteDesc *Dp )
     {
         char FmtBuO[ 32 ], FmtBuM[ 32 ];
 
-        my_log( LOG_NOTICE, 0, "Adding MFC: %s -> %s, InpVIf: %d",
+        my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "Adding MFC: %s -> %s, InpVIf: %d",
              fmtInAdr( FmtBuO, CtlReq.mfcc_origin ),
              fmtInAdr( FmtBuM, CtlReq.mfcc_mcastgrp ),
              (int)CtlReq.mfcc_parent
@@ -197,7 +197,7 @@ int addMRoute( struct MRouteDesc *Dp )
     rc = setsockopt( MRouterFD, IPPROTO_IP, MRT_ADD_MFC,
                     (void *)&CtlReq, sizeof( CtlReq ) );
     if (rc)
-        my_log( LOG_WARNING, errno, "MRT_ADD_MFC" );
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, errno, "MRT_ADD_MFC" );
 
     return rc;
 }
@@ -224,7 +224,7 @@ int delMRoute( struct MRouteDesc *Dp )
     {
         char FmtBuO[ 32 ], FmtBuM[ 32 ];
 
-        my_log( LOG_NOTICE, 0, "Removing MFC: %s -> %s, InpVIf: %d",
+        my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "Removing MFC: %s -> %s, InpVIf: %d",
              fmtInAdr( FmtBuO, CtlReq.mfcc_origin ),
              fmtInAdr( FmtBuM, CtlReq.mfcc_mcastgrp ),
              (int)CtlReq.mfcc_parent
@@ -234,7 +234,7 @@ int delMRoute( struct MRouteDesc *Dp )
     rc = setsockopt( MRouterFD, IPPROTO_IP, MRT_DEL_MFC,
                     (void *)&CtlReq, sizeof( CtlReq ) );
     if (rc)
-        my_log( LOG_WARNING, errno, "MRT_DEL_MFC" );
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, errno, "MRT_DEL_MFC" );
 
     return rc;
 }

@@ -100,7 +100,50 @@ extern char     s2[];
 extern char		s3[];
 extern char		s4[];
 
+//#################################################################################
+//  LUIS
+//#################################################################################
 
+/*
+ * To colorize the log messages
+ */
+// Define color codes
+#define COLOR_CODE_RESET          0
+#define COLOR_CODE_RED            1
+#define COLOR_CODE_GREEN          2
+#define COLOR_CODE_YELLOW         3
+#define COLOR_CODE_BLUE           4
+#define COLOR_CODE_MAGENTA        5
+#define COLOR_CODE_CYAN           6
+#define COLOR_CODE_WHITE          7
+#define COLOR_CODE_BRIGHT_RED     8
+#define COLOR_CODE_BRIGHT_GREEN   9
+#define COLOR_CODE_BRIGHT_YELLOW  10
+#define COLOR_CODE_BRIGHT_BLUE    11
+#define COLOR_CODE_BRIGHT_MAGENTA 12
+#define COLOR_CODE_BRIGHT_CYAN    13
+#define COLOR_CODE_BRIGHT_WHITE   14
+
+// Map color codes to ANSI escape sequences
+/**
+const char* color_codes[] = {
+    "\x1b[0m",   // Reset
+    "\x1b[31m",  // Red
+    "\x1b[32m",  // Green
+    "\x1b[33m",  // Yellow
+    "\x1b[34m",  // Blue
+    "\x1b[35m",  // Magenta
+    "\x1b[36m",  // Cyan
+    "\x1b[37m",  // White
+    "\x1b[91m",  // Bright Red
+    "\x1b[92m",  // Bright Green
+    "\x1b[93m",  // Bright Yellow
+    "\x1b[94m",  // Bright Blue
+    "\x1b[95m",  // Bright Magenta
+    "\x1b[96m",  // Bright Cyan
+    "\x1b[97m"   // Bright White
+};
+*/
 
 //#################################################################################
 //  Lib function prototypes.
@@ -111,7 +154,7 @@ extern char		s4[];
 extern bool Log2Stderr;           // Log to stderr instead of to syslog
 extern int  LogLevel;             // Log threshold, LOG_WARNING .... LOG_DEBUG
 
-void my_log( int Serverity, int Errno, const char *FmtSt, ... );
+void my_log( int Severity, int color_code, int Errno, const char *FmtSt, ...);
 
 /* ifvc.c
  */
@@ -262,6 +305,9 @@ void ageActiveRoutes(void);
 void setRouteLastMemberMode(uint32_t group, uint32_t src);
 int lastMemberGroupAge(uint32_t group);
 int interfaceInRoute(int32_t group, int Ix);
+//LUIS
+void sendDecoJoinsUpstream(void *data);
+void setupTimerNextDecoJoinsUpstream(int interval);
 
 /* request.c
  */

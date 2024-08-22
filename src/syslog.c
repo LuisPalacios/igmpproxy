@@ -33,31 +33,64 @@
 */
 
 #include "igmpproxy.h"
+#include <time.h>
 
 int LogLevel = LOG_WARNING;
 bool Log2Stderr = false;
+// Map color codes to ANSI escape sequences
+const char* color_codes[] = {
+    "\x1b[0m",   // Reset
+    "\x1b[31m",  // Red
+    "\x1b[32m",  // Green
+    "\x1b[33m",  // Yellow
+    "\x1b[34m",  // Blue
+    "\x1b[35m",  // Magenta
+    "\x1b[36m",  // Cyan
+    "\x1b[37m",  // White
+    "\x1b[91m",  // Bright Red
+    "\x1b[92m",  // Bright Green
+    "\x1b[93m",  // Bright Yellow
+    "\x1b[94m",  // Bright Blue
+    "\x1b[95m",  // Bright Magenta
+    "\x1b[96m",  // Bright Cyan
+    "\x1b[97m"   // Bright White
+};
 
-void my_log( int Severity, int Errno, const char *FmtSt, ... )
-{
-    char LogMsg[ 128 ];
+void my_log(int Severity, int color_code, int Errno, const char *FmtSt, ...) {
+    char LogMsg[256];
+    char TimeBuf[64];
+    time_t now = time(NULL);
+    struct tm *now_tm = localtime(&now);
+
+    strftime(TimeBuf, sizeof(TimeBuf), "%Y/%m/%d %H:%M:%S", now_tm);
 
     va_list ArgPt;
-    unsigned Ln;
-    va_start( ArgPt, FmtSt );
-    Ln = vsnprintf( LogMsg, sizeof( LogMsg ), FmtSt, ArgPt );
-    if( Errno > 0 )
-        snprintf( LogMsg + Ln, sizeof( LogMsg ) - Ln,
-                "; Errno(%d): %s", Errno, strerror(Errno) );
-    va_end( ArgPt );
+    va_start(ArgPt, FmtSt);
+
+    // Use color_codes array for both the selected color and the reset color
+    const char *color = (color_code >= 0 && color_code < sizeof(color_codes) / sizeof(char*))
+                        ? color_codes[color_code]
+                        : color_codes[COLOR_CODE_RESET];  // Use reset color code
+
+    char fullFmt[300]; // Ensure buffer is large enough
+    snprintf(fullFmt, sizeof(fullFmt), "%s%s - %s%s", color, TimeBuf, FmtSt, color_codes[COLOR_CODE_RESET]);
+
+    vsnprintf(LogMsg, sizeof(LogMsg), fullFmt, ArgPt);
+    va_end(ArgPt);
+
+    if (Errno > 0) {
+        char ErrMsg[128];
+        snprintf(ErrMsg, sizeof(ErrMsg), "; Errno(%d): %s", Errno, strerror(Errno));
+        strncat(LogMsg, ErrMsg, sizeof(LogMsg) - strlen(LogMsg) - 1);
+    }
 
     if (Severity <= LogLevel) {
         if (Log2Stderr)
             fprintf(stderr, "%s\n", LogMsg);
-        else {
+        else
             syslog(Severity, "%s", LogMsg);
-        }
     }
 
-    if( Severity <= LOG_ERR )
-        exit( -1 );
+    if (Severity <= LOG_ERR)
+        exit(-1);
 }

@@ -62,7 +62,7 @@ void rebuildIfVc () {
     struct Config *config = getCommonConfig();
 
     if ( (Sock = socket( AF_INET, SOCK_DGRAM, 0 )) < 0 )
-        my_log( LOG_ERR, errno, "RAW socket open" );
+        my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "RAW socket open" );
 
     // aimwang: set all downstream IF as lost, for check IF exist or gone.
     for (Dp = IfDescVc; Dp < IfDescEp; Dp++) {
@@ -75,7 +75,7 @@ void rebuildIfVc () {
     IoCtlReq.ifc_len = sizeof( IfVc );
 
     if ( ioctl( Sock, SIOCGIFCONF, &IoCtlReq ) < 0 )
-        my_log( LOG_ERR, errno, "ioctl SIOCGIFCONF" );
+        my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "ioctl SIOCGIFCONF" );
 
     IfEp = (void *)((char *)IfVc + IoCtlReq.ifc_len);
 
@@ -118,23 +118,23 @@ void rebuildIfVc () {
         memcpy( IfReq.ifr_name, Dp->Name, sizeof( IfReq.ifr_name ) );
 
         if (ioctl(Sock, SIOCGIFINDEX, &IfReq ) < 0)
-            my_log(LOG_ERR, errno, "ioctl SIOCGIFINDEX for %s", IfReq.ifr_name);
+            my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "ioctl SIOCGIFINDEX for %s", IfReq.ifr_name);
         Dp->ifIndex = IfReq.ifr_ifindex;
 
         // Get the subnet mask...
         if (ioctl(Sock, SIOCGIFNETMASK, &IfReq ) < 0)
-            my_log(LOG_ERR, errno, "ioctl SIOCGIFNETMASK for %s", IfReq.ifr_name);
+            my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "ioctl SIOCGIFNETMASK for %s", IfReq.ifr_name);
         mask = s_addr_from_sockaddr(&IfReq.ifr_addr); // Do not use ifr_netmask as it is not available on freebsd
         subnet = addr & mask;
 
         if ( ioctl( Sock, SIOCGIFFLAGS, &IfReq ) < 0 )
-            my_log( LOG_ERR, errno, "ioctl SIOCGIFFLAGS" );
+            my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "ioctl SIOCGIFFLAGS" );
         Dp->Flags = IfReq.ifr_flags;
 
         if (0x10d1 == Dp->Flags)
         {
             if ( ioctl( Sock, SIOCGIFDSTADDR, &IfReq ) < 0 )
-                my_log(LOG_ERR, errno, "ioctl SIOCGIFDSTADDR for %s", IfReq.ifr_name);
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "ioctl SIOCGIFDSTADDR for %s", IfReq.ifr_name);
             addr = s_addr_from_sockaddr(&IfReq.ifr_dstaddr);
             subnet = addr & mask;
         }
@@ -143,7 +143,7 @@ void rebuildIfVc () {
             // Insert the verified subnet as an allowed net...
             Dp->allowednets = (struct SubnetList *)malloc(sizeof(struct SubnetList));
             if(IfDescEp->allowednets == NULL) {
-                my_log(LOG_ERR, 0, "Out of memory !");
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Out of memory !");
             }
             Dp->allowednets->next = NULL;
             Dp->state         = IF_STATE_DOWNSTREAM;
@@ -163,7 +163,7 @@ void rebuildIfVc () {
 
         // when IF become enabeld from downstream, addVIF to enable its VIF
         if (Dp->state == IF_STATE_HIDDEN) {
-            my_log(LOG_NOTICE, 0, "%s [Hidden -> Downstream]", Dp->Name);
+            my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "%s [Hidden -> Downstream]", Dp->Name);
             Dp->state = IF_STATE_DOWNSTREAM;
             addVIF(Dp);
             k_join(Dp, allrouters_group);
@@ -171,7 +171,7 @@ void rebuildIfVc () {
 
         // addVIF when found new IF
         if (Dp == IfDescEp) {
-            my_log(LOG_NOTICE, 0, "%s [New]", Dp->Name);
+            my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "%s [New]", Dp->Name);
             Dp->state = config->defaultInterfaceState;
             addVIF(Dp);
             k_join(Dp, allrouters_group);
@@ -179,7 +179,7 @@ void rebuildIfVc () {
         }
 
         // Debug log the result...
-        my_log( LOG_DEBUG, 0, "rebuildIfVc: Interface %s Index: %d Addr: %s, Flags: 0x%04x, Network: %s",
+        my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "rebuildIfVc: Interface %s Index: %d Addr: %s, Flags: 0x%04x, Network: %s",
             Dp->Name,
             Dp->ifIndex,
             fmtInAdr( FmtBu, Dp->InAdr ),
@@ -190,7 +190,7 @@ void rebuildIfVc () {
     // aimwang: search not longer exist IF, set as hidden and call delVIF
     for (Dp = IfDescVc; Dp < IfDescEp; Dp++) {
         if (IF_STATE_LOST == Dp->state) {
-            my_log(LOG_NOTICE, 0, "%s [Downstream -> Hidden]", Dp->Name);
+            my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "%s [Downstream -> Hidden]", Dp->Name);
             Dp->state = IF_STATE_HIDDEN;
             k_leave(Dp, allrouters_group);
             delVIF(Dp);
@@ -213,7 +213,7 @@ void buildIfVc(void) {
     int Sock;
 
     if ( (Sock = socket( AF_INET, SOCK_DGRAM, 0 )) < 0 )
-        my_log( LOG_ERR, errno, "RAW socket open" );
+        my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "RAW socket open" );
 
     /* get If vector
      */
@@ -224,7 +224,7 @@ void buildIfVc(void) {
         IoCtlReq.ifc_len = sizeof( IfVc );
 
         if ( ioctl( Sock, SIOCGIFCONF, &IoCtlReq ) < 0 )
-            my_log( LOG_ERR, errno, "ioctl SIOCGIFCONF" );
+            my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "ioctl SIOCGIFCONF" );
 
         IfEp = (void *)((char *)IfVc + IoCtlReq.ifc_len);
     }
@@ -274,12 +274,12 @@ void buildIfVc(void) {
             memcpy( IfReq.ifr_name, IfDescEp->Name, sizeof( IfReq.ifr_name ) );
 
             if (ioctl(Sock, SIOCGIFINDEX, &IfReq ) < 0)
-                my_log(LOG_ERR, errno, "ioctl SIOCGIFINDEX for %s", IfReq.ifr_name);
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "ioctl SIOCGIFINDEX for %s", IfReq.ifr_name);
             IfDescEp->ifIndex = IfReq.ifr_ifindex;
 
             // Get the subnet mask...
             if (ioctl(Sock, SIOCGIFNETMASK, &IfReq ) < 0)
-                my_log(LOG_ERR, errno, "ioctl SIOCGIFNETMASK for %s", IfReq.ifr_name);
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "ioctl SIOCGIFNETMASK for %s", IfReq.ifr_name);
             mask = s_addr_from_sockaddr(&IfReq.ifr_addr); // Do not use ifr_netmask as it is not available on freebsd
             subnet = addr & mask;
 
@@ -293,7 +293,7 @@ void buildIfVc(void) {
             ** ipipx 0x00C1 -> NoArp, Running, Up
             */
             if ( ioctl( Sock, SIOCGIFFLAGS, &IfReq ) < 0 )
-                my_log( LOG_ERR, errno, "ioctl SIOCGIFFLAGS" );
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "ioctl SIOCGIFFLAGS" );
 
             IfDescEp->Flags = IfReq.ifr_flags;
 
@@ -301,14 +301,14 @@ void buildIfVc(void) {
             if (0x10d1 == IfDescEp->Flags)
             {
                 if ( ioctl( Sock, SIOCGIFDSTADDR, &IfReq ) < 0 )
-                    my_log(LOG_ERR, errno, "ioctl SIOCGIFDSTADDR for %s", IfReq.ifr_name);
+                    my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, errno, "ioctl SIOCGIFDSTADDR for %s", IfReq.ifr_name);
                 addr = s_addr_from_sockaddr(&IfReq.ifr_dstaddr);
                 subnet = addr & mask;
             }
 
             // Insert the verified subnet as an allowed net...
             IfDescEp->allowednets = (struct SubnetList *)malloc(sizeof(struct SubnetList));
-            if(IfDescEp->allowednets == NULL) my_log(LOG_ERR, 0, "Out of memory !");
+            if(IfDescEp->allowednets == NULL) my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "Out of memory !");
 
             // Create the network address for the IF..
             IfDescEp->allowednets->next = NULL;
@@ -322,7 +322,7 @@ void buildIfVc(void) {
             IfDescEp->ratelimit     = DEFAULT_RATELIMIT;
 
             // Debug log the result...
-            my_log( LOG_DEBUG, 0, "buildIfVc: Interface %s Index: %d Addr: %s, Flags: 0x%04x, Network: %s",
+            my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "buildIfVc: Interface %s Index: %d Addr: %s, Flags: 0x%04x, Network: %s",
                  IfDescEp->Name,
                  IfDescEp->ifIndex,
                  fmtInAdr( FmtBu, IfDescEp->InAdr ),

@@ -65,18 +65,18 @@ void k_set_rcvbuf(int bufsize, int minsize) {
             }
         }
         if (bufsize < minsize) {
-            my_log(LOG_ERR, 0, "OS-allowed buffer size %u < app min %u",
+            my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "OS-allowed buffer size %u < app min %u",
                 bufsize, minsize);
             /*NOTREACHED*/
         }
     }
-    my_log(LOG_DEBUG, 0, "Got %d byte buffer size in %d iterations", bufsize, iter);
+    my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Got %d byte buffer size in %d iterations", bufsize, iter);
 }
 
 void k_hdr_include(int hdrincl) {
     if (setsockopt(MRouterFD, IPPROTO_IP, IP_HDRINCL,
                    (char *)&hdrincl, sizeof(hdrincl)) < 0)
-        my_log(LOG_WARNING, errno, "setsockopt IP_HDRINCL %u", hdrincl);
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, errno, "setsockopt IP_HDRINCL %u", hdrincl);
 }
 
 
@@ -87,7 +87,7 @@ void k_set_ttl(int t) {
     ttl = t;
     if (setsockopt(MRouterFD, IPPROTO_IP, IP_MULTICAST_TTL,
                    (char *)&ttl, sizeof(ttl)) < 0)
-        my_log(LOG_WARNING, errno, "setsockopt IP_MULTICAST_TTL %u", ttl);
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, errno, "setsockopt IP_MULTICAST_TTL %u", ttl);
 #endif
     curttl = t;
 }
@@ -98,7 +98,7 @@ void k_set_loop(int l) {
     loop = l;
     if (setsockopt(MRouterFD, IPPROTO_IP, IP_MULTICAST_LOOP,
                    (char *)&loop, sizeof(loop)) < 0)
-        my_log(LOG_WARNING, errno, "setsockopt IP_MULTICAST_LOOP %u", loop);
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, errno, "setsockopt IP_MULTICAST_LOOP %u", loop);
 }
 void k_set_if(uint32_t ifa, int ifidx) {
 #ifdef HAVE_STRUCT_IP_MREQN
@@ -112,7 +112,7 @@ void k_set_if(uint32_t ifa, int ifidx) {
 
     if (setsockopt(MRouterFD, IPPROTO_IP, IP_MULTICAST_IF,
                    (char *)&ifsel, sizeof(ifsel)) < 0)
-        my_log(LOG_WARNING, errno, "setsockopt IP_MULTICAST_IF %s",
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, errno, "setsockopt IP_MULTICAST_IF %s",
             inetFmt(ifa, s1));
 }
 
@@ -131,22 +131,22 @@ void k_join(struct IfDesc *ifd, uint32_t grp) {
 // LUISPA's dirty Hack - before joining, I'll leave the group to clear any existing membership
 // With M+ IPTV Service, upstream is NOT sending membership query's, so I need this hack
 // to emulate every Deco behaviour downstream.
-    my_log(LOG_NOTICE, 0, ">>>>>> Call k-leave %s on interface %s. <<<<<<<<<<<<<<<<<<< M+ dirty hack !!", inetFmt(grp, s1), ifd->Name);
-    k_leave(ifd, grp);
+//    my_log(LOG_NOTICE, COLOR_CODE_YELLOW, 0, ">>>>>> Call k-leave %s on interface %s. <<<<<<<<<<<<<<<<<<< M+ dirty hack !!", inetFmt(grp, s1), ifd->Name);
+//    k_leave(ifd, grp);
 //
 //
 
-    my_log(LOG_NOTICE, 0, "Joining group %s on interface %s", inetFmt(grp, s1), ifd->Name);
+    my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "Joining group %s on interface %s", inetFmt(grp, s1), ifd->Name);
 
     if (setsockopt(MRouterFD, IPPROTO_IP, IP_ADD_MEMBERSHIP,
                    (char *)&mreq, sizeof(mreq)) < 0) {
         int mcastGroupExceeded = (errno == ENOBUFS);
-        my_log(LOG_WARNING, errno, "can't join group %s on interface %s",
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, errno, "can't join group %s on interface %s",
             inetFmt(grp, s1), ifd->Name);
         if (mcastGroupExceeded) {
-            my_log(LOG_WARNING, 0, "Maximum number of multicast groups were exceeded");
+            my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "Maximum number of multicast groups were exceeded");
 #ifdef __linux__
-            my_log(LOG_WARNING, 0, "Check settings of '/sbin/sysctl net.ipv4.igmp_max_memberships'");
+            my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "Check settings of '/sbin/sysctl net.ipv4.igmp_max_memberships'");
 #endif
         }
     }
@@ -163,10 +163,10 @@ void k_leave(struct IfDesc *ifd, uint32_t grp) {
 #endif
     mreq.imr_multiaddr.s_addr = grp;
 
-    my_log(LOG_NOTICE, 0, "Leaving group %s on interface %s", inetFmt(grp, s1), ifd->Name);
+    my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "Leaving group %s on interface %s", inetFmt(grp, s1), ifd->Name);
 
     if (setsockopt(MRouterFD, IPPROTO_IP, IP_DROP_MEMBERSHIP,
                    (char *)&mreq, sizeof(mreq)) < 0)
-        my_log(LOG_WARNING, errno, "can't leave group %s on interface %s",
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, errno, "can't leave group %s on interface %s",
             inetFmt(grp, s1), ifd->Name);
 }

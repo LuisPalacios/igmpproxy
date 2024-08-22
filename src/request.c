@@ -59,7 +59,7 @@ void acceptGroupReport(uint32_t src, uint32_t group) {
 
     // Sanitycheck the group adress...
     if(!IN_MULTICAST( ntohl(group) )) {
-        my_log(LOG_WARNING, 0, "The group address %s is not a valid Multicast group.",
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "The group address %s is not a valid Multicast group.",
             inetFmt(group, s1));
         return;
     }
@@ -67,20 +67,20 @@ void acceptGroupReport(uint32_t src, uint32_t group) {
     // Find the interface on which the report was received.
     sourceVif = getIfByAddress( src );
     if(sourceVif == NULL) {
-        my_log(LOG_WARNING, 0, "No interfaces found for source %s",
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "No interfaces found for source %s",
             inetFmt(src,s1));
         return;
     }
 
     if(sourceVif->InAdr.s_addr == src) {
-        my_log(LOG_NOTICE, 0, "The IGMP message was from myself. Ignoring.");
+        my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "The IGMP message was from myself. Ignoring.");
         return;
     }
 
     // We have a IF so check that it's an downstream IF.
     if(sourceVif->state == IF_STATE_DOWNSTREAM) {
 
-        my_log(LOG_DEBUG, 0, "Should insert group %s (from: %s) to route table. Vif Ix : %d",
+        my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Should insert group %s (from: %s) to route table. Vif Ix : %d",
             inetFmt(group,s1), inetFmt(src,s2), sourceVif->index);
 
         // If we don't have a black- and whitelist we insertRoute and done
@@ -109,10 +109,10 @@ void acceptGroupReport(uint32_t src, uint32_t group) {
             insertRoute(group, sourceVif->index, src);
             return;
         }
-        my_log(LOG_INFO, 0, "The group address %s may not be requested from this interface. Ignoring.", inetFmt(group, s1));
+        my_log(LOG_INFO, COLOR_CODE_WHITE, 0, "The group address %s may not be requested from this interface. Ignoring.", inetFmt(group, s1));
     } else {
         // Log the state of the interface the report was received on.
-        my_log(LOG_INFO, 0, "Mebership report was received on %s. Ignoring.",
+        my_log(LOG_INFO, COLOR_CODE_WHITE, 0, "Mebership report was received on %s. Ignoring.",
             sourceVif->state==IF_STATE_UPSTREAM?"the upstream interface":"a disabled interface");
     }
 }
@@ -123,13 +123,13 @@ void acceptGroupReport(uint32_t src, uint32_t group) {
 void acceptLeaveMessage(uint32_t src, uint32_t group) {
     struct IfDesc   *sourceVif;
 
-    my_log(LOG_DEBUG, 0,
+    my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0,
         "Got leave message from %s to %s. Starting last member detection.",
         inetFmt(src, s1), inetFmt(group, s2));
 
     // Sanitycheck the group adress...
     if(!IN_MULTICAST( ntohl(group) )) {
-        my_log(LOG_WARNING, 0, "The group address %s is not a valid Multicast group.",
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "The group address %s is not a valid Multicast group.",
             inetFmt(group, s1));
         return;
     }
@@ -137,7 +137,7 @@ void acceptLeaveMessage(uint32_t src, uint32_t group) {
     // Find the interface on which the report was received.
     sourceVif = getIfByAddress( src );
     if(sourceVif == NULL) {
-        my_log(LOG_WARNING, 0, "No interfaces found for source %s",
+        my_log(LOG_WARNING, COLOR_CODE_WHITE, 0, "No interfaces found for source %s",
             inetFmt(src,s1));
         return;
     }
@@ -160,7 +160,7 @@ void acceptLeaveMessage(uint32_t src, uint32_t group) {
 
     } else {
         // just ignore the leave request...
-        my_log(LOG_DEBUG, 0, "The found if for %s was not downstream. Ignoring leave request.", inetFmt(src, s1));
+        my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "The found if for %s was not downstream. Ignoring leave request.", inetFmt(src, s1));
     }
 }
 
@@ -204,7 +204,7 @@ void sendGroupSpecificMemberQuery(void *argument) {
                             conf->lastMemberQueryInterval * IGMP_TIMER_SCALE,
                             gvDesc->group, 0, Dp->ifIndex);
 
-                    my_log(LOG_DEBUG, 0, "Sent membership query from %s to %s. Delay: %d",
+                    my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Sent membership query from %s to %s. Delay: %d",
                             inetFmt(Dp->InAdr.s_addr,s1), inetFmt(gvDesc->group,s2),
                             conf->lastMemberQueryInterval);
                 }
@@ -234,7 +234,7 @@ void sendGeneralMembershipQuery(void) {
                          IGMP_MEMBERSHIP_QUERY,
                          conf->queryResponseInterval * IGMP_TIMER_SCALE, 0, 0, Dp->ifIndex);
 
-                my_log(LOG_DEBUG, 0,
+                my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0,
                     "Sent membership query from %s ifIndex %d to %s. Delay: %d",
                     inetFmt(Dp->InAdr.s_addr,s1),
                     Dp->ifIndex,
