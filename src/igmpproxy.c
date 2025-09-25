@@ -270,9 +270,13 @@ int igmpProxyInit(void) {
     initRouteTable();
     // Initialize timer
     callout_init();
-    // LUIS
-    // Initialize my timer
-    setupTimerNextDecoJoinsUpstream(10); // Call this with the desired interval in seconds
+    
+#if MOVISTAR_WORKAROUND_ENABLED
+    // Initialize Movistar+ IPTV workaround timer
+    // This sends periodic IGMP Membership Reports upstream to prevent
+    // group membership timeouts when upstream routers don't send queries
+    setupTimerNextDecoJoinsUpstream(MOVISTAR_REFRESH_INITIAL_DELAY);
+#endif
 
     return 1;
 }

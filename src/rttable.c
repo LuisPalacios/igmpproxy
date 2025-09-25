@@ -405,14 +405,10 @@ int insertRoute(uint32_t group, int ifx, uint32_t src) {
     }
 
     // Send join message upstream, if the route has no joined flag...
-// LUISPA's dirty Hack - Force a Join.
-// With M+ IPTV Service, upstream is NOT sending membership query's, so I need this hack
-// to emulate every Deco behaviour downstream. See also kern.c
-// I comment the "if" so forcing the Join...
-//    if(croute->upstrState != ROUTESTATE_JOINED) {
+    if(croute->upstrState != ROUTESTATE_JOINED) {
         // Send Join request upstream
         sendJoinLeaveUpstream(croute, 1);
-//    }
+    }
 
     logRouteTable("Insert Route");
 
@@ -829,35 +825,51 @@ int interfaceInRoute(int32_t group, int Ix) {
 }
 
 
-// LUIS
+/*
+ * Movistar+ IPTV Workaround Functions
+ * 
+ * These functions implement a workaround for Movistar+ IPTV service where
+ * upstream routers do not send IGMP Membership Queries. Without periodic
+ * queries, group memberships timeout after 260 seconds, causing TV streams
+ * to freeze every ~4.5 minutes.
+ * 
+ * The workaround sends periodic IGMP Membership Reports upstream to maintain
+ * active group memberships and prevent timeouts. This is done without
+ * causing flickering by using IGMP reports instead of kernel-level Leave/Join.
+ */
 
 /**
-*   Luis. Mandar un Leave/Join upstream seguidos !
-*/
-static void sendLeaveThenJoinUpstream(struct RouteTable* route) {
-    struct IfDesc*      upstrIf;
+ * Send IGMP Membership Report upstream to refresh group membership
+ * 
+ * This function sends an IGMP Membership Report for a specific group to
+ * the upstream interface. Unlike kernel-level Leave/Join operations,
+ * IGMP reports do not cause stream interruptions and are the standard
+ * way to refresh multicast group memberships.
+ * 
+ * @param route - Route table entry for the group to refresh
+ */
+static void sendMembershipReportUpstream(struct RouteTable* route) {
+    struct IfDesc* upstrIf;
     int i;
 
-    for(i=0; i<MAX_UPS_VIFS; i++)
-    {
-        if (-1 != upStreamIfIdx[i])
-        {
-            // Get the upstream IF...
-            upstrIf = getIfByIx( upStreamIfIdx[i] );
+    for(i = 0; i < MAX_UPS_VIFS; i++) {
+        if (-1 != upStreamIfIdx[i]) {
+            // Get the upstream interface
+            upstrIf = getIfByIx(upStreamIfIdx[i]);
             if(upstrIf == NULL) {
-                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0 ,"FATAL: Unable to get Upstream IF.");
+                my_log(LOG_ERR, COLOR_CODE_BRIGHT_RED, 0, "FATAL: Unable to get Upstream IF.");
+                continue;
             }
 
-            // Check if there is a black- or whitelist for the upstram VIF
+            // Check if there is a black- or whitelist for the upstream VIF
             if (upstrIf->allowedgroups != NULL) {
-                bool                 allow_list = false;
-                struct SubnetList   *match = NULL;
-                struct SubnetList   *sn;
-                uint32_t             group = route->group;
+                bool allow_list = false;
+                struct SubnetList *match = NULL;
+                struct SubnetList *sn;
+                uint32_t group = route->group;
 
-                // Check if this Request is legit to be forwarded to upstream
+                // Check if this request is legit to be forwarded to upstream
                 for(sn = upstrIf->allowedgroups; sn != NULL; sn = sn->next) {
-                    // Check if there is a whitelist
                     if (sn->allow)
                         allow_list = true;
                     if((group & sn->subnet_mask) == sn->subnet_addr)
@@ -867,89 +879,66 @@ static void sendLeaveThenJoinUpstream(struct RouteTable* route) {
                 // Keep in sync with request.c, note the negation
                 if(!((!allow_list && match == NULL) ||
                   (allow_list && match != NULL && match->allow))) {
-                    my_log(LOG_INFO, COLOR_CODE_BRIGHT_WHITE, 0, "The group address %s may not be forwarded upstream. Ignoring.", inetFmt(group, s1));
-                    return;
+                    my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Group %s not allowed upstream, skipping refresh", inetFmt(group, s1));
+                    continue;
                 }
             }
 
-
-            // LEAVE
-            // Only leave if group is not left already...
-            if(route->upstrState != ROUTESTATE_NOTJOINED) {
-                my_log(LOG_DEBUG, COLOR_CODE_BRIGHT_WHITE, 0, "Leaving group %s upstream on IF address %s",
+            // Only send report if group is currently joined and has downstream listeners
+            if(route->upstrState == ROUTESTATE_JOINED && route->vifBits > 0) {
+                my_log(LOG_DEBUG, COLOR_CODE_WHITE, 0, "Refreshing membership for group %s upstream on IF %s",
                              inetFmt(route->group, s1),
                              inetFmt(upstrIf->InAdr.s_addr, s2));
 
-                k_leave(upstrIf, route->group);
-
-                route->upstrState = ROUTESTATE_NOTJOINED;
+                // Send IGMP Membership Report (not kernel-level join)
+                sendIgmp(upstrIf->InAdr.s_addr, route->group, IGMP_V2_MEMBERSHIP_REPORT, 0, route->group, 0, upstrIf->ifIndex);
             }
-
-            // JOIN
-            // Only join a group if there are listeners downstream...
-            if(route->vifBits > 0) {
-                my_log(LOG_DEBUG, COLOR_CODE_BRIGHT_WHITE, 0, "Leaving group %s upstream on IF address %s",
-                             inetFmt(route->group, s1),
-                             inetFmt(upstrIf->InAdr.s_addr, s2));
-
-                k_join(upstrIf, route->group);
-
-                route->upstrState = ROUTESTATE_JOINED;
-            } else {
-                my_log(LOG_DEBUG, COLOR_CODE_BRIGHT_WHITE, 0, "No downstream listeners for group %s. No join sent.",
-                    inetFmt(route->group, s1));
-            }
-
-        }
-        else
-        {
-            i = MAX_UPS_VIFS;
+        } else {
+            break; // No more upstream interfaces
         }
     }
 }
-
-// Include this function in igmp.c where other IGMP related functions are defined
-void sendDecoJoinsUpstream(void *data) {
-    struct RouteTable   *croute, *nroute;
-
-    // Iterate through the active group list and send join requests
-    my_log(LOG_WARNING, COLOR_CODE_YELLOW, 0, ">>>> sendPeriodicIgmpJoins <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< START");
 
 /**
-    struct GroupDesc *group;
-    for (group = group_list; group != NULL; group = group->next) {
-        sendIgmp(group->sourceVif->InAdr.s_addr, group->group, IGMP_MEMBERSHIP_REPORT, 0, group->group, 0, group->sourceVif->ifIndex);
-        my_log(LOG_NOTICE, COLOR_CODE_WHITE, 0, "Periodic IGMP Join sent for group %s", inetFmt(group->group, s1));
-    }
-*/
+ * Periodic function to refresh upstream group memberships
+ * 
+ * This function is called periodically to send IGMP Membership Reports
+ * for all active groups upstream. This prevents upstream timeouts
+ * without causing stream flickering.
+ * 
+ * @param data - Unused (required by timer callback signature)
+ */
+void sendDecoJoinsUpstream(void *data) {
+    struct RouteTable *croute, *nroute;
+    int active_groups = 0;
 
-    // loops through all routes
-    my_log(LOG_NOTICE, COLOR_CODE_BRIGHT_WHITE, 0, "sendDecoJoinsUpstream looping through all routes.");
+    my_log(LOG_DEBUG, COLOR_CODE_YELLOW, 0, "Starting periodic membership refresh cycle");
 
-    // Scan all routes...
-    for( croute = routing_table; croute != NULL; croute = nroute ) {
-        // Keep the next route (since current route may be removed)...
+    // Scan all active routes and refresh their upstream memberships
+    for(croute = routing_table; croute != NULL; croute = nroute) {
+        // Keep the next route (since current route may be removed)
         nroute = croute->nextroute;
 
-        // Log the route info
-        my_log(LOG_NOTICE, COLOR_CODE_BRIGHT_WHITE, 0, "route %s",inetFmt(croute->group,s1));
-
-        // A por ello
-        // COMENTAR AQUI DURANTE DESARROLLO
-        sendLeaveThenJoinUpstream(croute);
+        // Only refresh groups that are currently joined upstream
+        if(croute->upstrState == ROUTESTATE_JOINED && croute->vifBits > 0) {
+            sendMembershipReportUpstream(croute);
+            active_groups++;
+        }
     }
 
-    // Setup a new timer
-    setupTimerNextDecoJoinsUpstream(60); // Call this with the desired interval in seconds
+    my_log(LOG_DEBUG, COLOR_CODE_YELLOW, 0, "Refreshed %d active group memberships", active_groups);
 
-    my_log(LOG_NOTICE, COLOR_CODE_YELLOW, 0, ">>>> sendPeriodicIgmpJoins <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< END");
-
+    // Setup next timer
+    setupTimerNextDecoJoinsUpstream(MOVISTAR_REFRESH_INTERVAL);
 }
 
-// Setup a new timer
+/**
+ * Setup periodic timer for membership refresh
+ * 
+ * @param interval - Interval in seconds between refresh cycles
+ */
 void setupTimerNextDecoJoinsUpstream(int interval) {
-    my_log(LOG_DEBUG, COLOR_CODE_YELLOW, 0, ">>>> setup_periodic_timer(%d)", interval);
-    // Setup timer to periodically call sendPeriodicIgmpJoins
+    my_log(LOG_DEBUG, COLOR_CODE_YELLOW, 0, "Setting up next membership refresh in %d seconds", interval);
     timer_setTimer(interval, sendDecoJoinsUpstream, NULL);
 }
 

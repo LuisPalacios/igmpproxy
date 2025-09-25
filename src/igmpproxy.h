@@ -124,6 +124,28 @@ extern char		s4[];
 #define COLOR_CODE_BRIGHT_CYAN    13
 #define COLOR_CODE_BRIGHT_WHITE   14
 
+/*
+ * Movistar+ IPTV Workaround Configuration
+ * 
+ * These defines control the periodic refresh mechanism used to work around
+ * the fact that Movistar+ upstream routers do not send IGMP Membership Queries.
+ * Without periodic queries, group memberships timeout after 260 seconds,
+ * causing TV streams to freeze every ~4.5 minutes.
+ * 
+ * The workaround sends periodic IGMP Membership Reports upstream to maintain
+ * active group memberships and prevent timeouts.
+ */
+
+// Initial delay before starting periodic refresh (seconds)
+#define MOVISTAR_REFRESH_INITIAL_DELAY    10
+
+// Interval between periodic refresh cycles (seconds)
+// Should be less than 260 seconds to prevent upstream timeouts
+#define MOVISTAR_REFRESH_INTERVAL         60
+
+// Enable/disable the Movistar+ workaround
+#define MOVISTAR_WORKAROUND_ENABLED       1
+
 // Map color codes to ANSI escape sequences
 /**
 const char* color_codes[] = {
@@ -305,7 +327,14 @@ void ageActiveRoutes(void);
 void setRouteLastMemberMode(uint32_t group, uint32_t src);
 int lastMemberGroupAge(uint32_t group);
 int interfaceInRoute(int32_t group, int Ix);
-//LUIS
+/*
+ * Movistar+ IPTV Workaround Functions
+ * 
+ * These functions implement a workaround for Movistar+ IPTV service where
+ * upstream routers do not send IGMP Membership Queries. The workaround
+ * sends periodic IGMP Membership Reports upstream to maintain active
+ * group memberships and prevent timeouts.
+ */
 void sendDecoJoinsUpstream(void *data);
 void setupTimerNextDecoJoinsUpstream(int interval);
 

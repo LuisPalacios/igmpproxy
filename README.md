@@ -1,8 +1,14 @@
-# IGMPproxy
+# IGMPproxy - Movistar+ IPTV Edition
 
-A simple mulitcast router that only uses the IGMP protocol.
+A specialized fork of igmpproxy designed specifically for Movistar+ IPTV service in Spain. This version includes workarounds to address compatibility issues with Movistar's multicast infrastructure.
 
-Supported operating systems:
+## Overview
+
+This is a fork of the original igmpproxy multicast router, modified to work reliably with Movistar+ IPTV service. The original igmpproxy is a simple multicast router that uses only the IGMP protocol for dynamic multicast traffic routing.
+
+**Important Note**: This fork is specifically tailored for Movistar+ IPTV service and is not intended for general use or upstream contribution to the original project.
+
+## Supported Operating Systems
 
 - Linux
 - FreeBSD
@@ -10,31 +16,69 @@ Supported operating systems:
 - OpenBSD
 - DragonFly BSD
 
+## License
+
 This software is released under the GNU GPL license v2 or later. See details in COPYING.
 
-## Patch for M+
+## Movistar+ Specific Modifications
 
-M+ upstream router doesn't send Membership Query's. The side effect on `igmpproxy` is that without query's it will not report (join) again upstream. What will happen is that the group membership upstream will timeout after 260secs, so every 4'30" it will stop sending traffic and your TV stream will freeze.
+### Problem Statement
 
-One option is to change channel and it will start again, for another 4'30", which makes it unusable.
+Movistar+ IPTV service has a critical compatibility issue with standard IGMP proxy implementations:
 
-First modification: I initally made a modification to to replicate every Join from our local LAN (from the Decos) from time to time, so it avoids upstream to stop sending traffic, however I've make a quick and dirty patch to simple copy/paste all Join's from downstream, making this igmpproxy unefficient in general, but working for this particular case without any problem.
+- **Missing IGMP Queries**: Movistar's upstream routers do not send IGMP Membership Queries
+- **Timeout Issue**: Without periodic queries, group memberships timeout after 260 seconds
+- **Service Interruption**: TV streams freeze every ~4.5 minutes, making the service unusable
+- **Workaround Required**: Users must change channels to restart streams temporarily
 
-Second modification: I've implemented a timer to `sendPeriodicIgmpJoins` to send Leave/Join's upstream.
+### Technical Solution
 
-Don't use this version on any other use case than Movistar+. If you are using just for the IPTV service at home, feel free to implement this dirty hack that breaks efficiency but works like a champ.
+I've implemented in this fork a workaround that maintains active multicast group memberships without relying on upstream IGMP queries:
+
+#### 1. Periodic Membership Refresh
+- **Automated Refresh**: Sends periodic IGMP Membership Reports upstream every 60 seconds
+- **State-Aware Processing**: Only refreshes groups that are actively joined upstream
+- **Efficient Filtering**: Skips groups without downstream listeners to minimize network traffic
+
+#### 2. Flicker-Free Implementation
+- **IGMP Reports**: Uses standard IGMP Membership Reports instead of kernel-level Leave/Join operations
+- **No Stream Interruption**: Maintains continuous multicast streams without flickering
+- **Transparent Operation**: The workaround is completely invisible to end users
+
+#### 3. Configurable Parameters
+- **Initial Delay**: 10-second startup delay before beginning refresh cycles
+- **Refresh Interval**: 60-second intervals between membership refreshes
+- **Enable/Disable**: Can be easily disabled via compile-time configuration
+
+### Architecture
+
+The solution works by implementing a periodic timer that sends IGMP Membership Reports for all active multicast groups upstream. This prevents the 260-second timeout that occurs when upstream routers don't send periodic queries.
+
+```
+Movistar+ Backend Router
+         |
+         | (No IGMP Queries sent)
+         |
+    Home Router (igmpproxy)
+         |
+    ┌────┼────┐
+    |    |    |
+   D1   D2   D3  (Decos/Set-top boxes)
+```
+
+**Key Components**:
+- **Membership Refresh Timer**: Periodic function that refreshes upstream memberships
+- **State Management**: Tracks which groups are actively joined upstream
+- **IGMP Report Generation**: Sends standard IGMP Membership Reports upstream
+- **Efficient Processing**: Only processes groups with active downstream listeners
+
+## Installation and Usage
 
 ### Compilation
 
-Clone
-
-```zsh
+```bash
 git clone https://github.com/LuisPalacios/igmpproxy.git
-```
-
-Build
-
-```zsh
+cd igmpproxy
 ./autogen.sh
 ./configure
 make
@@ -42,33 +86,21 @@ make
 
 ### Installation
 
-Notice it will be installed under `/usr/local`, so if you have a previous installation it will not be modified, anyway I recommend to remove the OS official version to avoid conflicts.
+```bash
+# Remove system igmpproxy to avoid conflicts
+sudo apt purge igmpproxy
 
-Remove OS official version
-
-```zsh
-% sudo apt purge igmpproxy
-```
-
-Install
-
-```zsh
-% make install
-:
-/usr/bin/mkdir -p '/usr/local/sbin'
-/usr/bin/install -c igmpproxy '/usr/local/sbin'
-:
-/usr/bin/mkdir -p '/usr/local/etc'
-/usr/bin/install -c -m 644 igmpproxy.conf '/usr/local/etc'
+# Install custom version
+sudo make install
 ```
 
 ### Configuration
 
-Create `/etc/systemd/system/igmpproxy.service`
+Create `/etc/systemd/system/igmpproxy.service`:
 
-```conf
+```ini
 [Unit]
-Description=Custom igmpproxy service
+Description=Movistar+ Compatible IGMP Proxy
 Documentation=https://github.com/LuisPalacios/igmpproxy
 After=network-online.target
 
@@ -84,62 +116,103 @@ KillMode=control-group
 WantedBy=multi-user.target
 ```
 
-Create `/etc/default/igmpproxy`
+Create `/etc/default/igmpproxy`:
 
-```conf
-# Options for my custom igmpproxy
-# source https://github.com/LuisPalacios/igmpproxy
+```bash
+# Options for Movistar+ compatible igmpproxy
 IGMPPROXY_OPTS="-n /etc/igmpproxy.conf"
 ```
 
-Create `/etc/igmpproxy.conf`
+Create `/etc/igmpproxy.conf`:
 
 ```conf
-# Sample configuration file for Movistar+
-# Upstream: vlan2 (M+ iptv)
-# Downstream: vlan10 (local LAN)
+# Movistar+ IPTV Configuration
+# Upstream: vlan2 (Movistar+ IPTV network)
+# Downstream: vlan10 (Local LAN with Decos)
 quickleave
-phyint vlan2 upstream  ratelimit 0  threshold 3
+phyint vlan2 upstream ratelimit 0 threshold 3
     altnet 172.0.0.0/8
-phyint vlan10 downstream ratelimit 0  threshold 3
+phyint vlan10 downstream ratelimit 0 threshold 3
 phyint lo disabled
 phyint ppp0 disabled
 phyint vlan3 disabled
 phyint vlan6 disabled
 ```
 
-### Run
+### Service Management
 
-```zsh
-systemctl daemon-reload
-systemctl enable igmpproxy
-systemctl start igmpproxy
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable igmpproxy
+sudo systemctl start igmpproxy
 ```
 
-### Rationale for the patch
+## Technical Details
 
-In IGMPv2 there is subscription management, to deliver IPTV efficiently, ensuring that streams are transmitted only when and where they are needed. This optimizes bandwidth  and network resources.
+### IGMP Protocol Behavior
 
-Decos frequently send joins to various groups: it starts with `239.0.2.30:22222` **OPCH**  and then targets others such as `239.0.2.2, 239.0.2.129-134, 239.0.2.154-155`. At a given moment it asks for the channel you want to watch, which is in `239.0.[0,3,4,5,6,7,8,9].*`
+In standard IGMP implementations:
+- **Join**: When a client wants to receive a multicast stream, it sends a Join message
+- **Leave**: When no clients are interested, a Leave message is sent upstream
+- **Query**: Upstream routers periodically send Queries to check active memberships
+- **Report**: Clients respond to Queries with Reports indicating active subscriptions
 
-Imagine this setup, with 3 decos. If the `igmpproxy` would make copy/paste of the joins/leaves it would not be enough, you would multiply by three the control traffic  in the upstream. Here Router Movistar is the router in the backend cloud of Movistar. The Router igmpproxy is your router at home (not the original from M+)
+### Movistar+ Issue
 
-```text
-Router
-Movistar
-  |
-  |
-Router
-igmpproxy
- |  |  |
- |  |  |
-D1  D2  D3   <-- Decos
-````
+Movistar's infrastructure lacks the Query/Report cycle:
+- No periodic IGMP Queries are sent from upstream
+- Group memberships timeout after 260 seconds without refresh
+- Standard igmpproxy implementations cannot maintain active memberships
+- Results in service interruption every ~4.5 minutes
 
-**Join**: When a deco wants to start receiving a specific stream, it sends a Join message to the corresponding multicast group. The igmpproxy receives this Join and, if it was not previously subscribed to that group in the operator's network, sends a Join message to  the main multicast router (upstream). The proxy keeps a control table of which sites he is subscribed to.
+### Solution Implementation
 
-**Leave**: If **all** decos in your network are no longer interested in a multicast stream (i.e. there are no more active subscribers for that group in your network), igmpproxy detects this (due to deco leaves or inactivity) and sends a **Leave** message to the upstream router to stop sending that specific content.
+This fork addresses the issue by:
+1. **Proactive Refresh**: Sends periodic IGMP Membership Reports upstream
+2. **Standard Compliance**: Uses proper IGMP protocol mechanisms
+3. **Efficiency**: Only refreshes groups with active downstream listeners
+4. **Reliability**: Prevents timeout-based service interruptions
 
-**Query**: The upstream router occasionally sends **Queries** to check what subscriptions are  active on the networks below it (like your home network). When igmpproxy receives a Query: it should respond with a **Report** indicating all multicast groups to which its set-top boxes are still actively subscribed. This informs the upstream router that those specific streams are still needed and should continue to be sent.
+## Configuration Options
 
-What I've seen is that the "Movistar Router" does not send queries, so after 260" timeout kick's in and stream stops.
+The workaround can be configured via compile-time defines in `src/igmpproxy.h`:
+
+- `MOVISTAR_REFRESH_INITIAL_DELAY`: Initial delay before starting refresh cycles (default: 10 seconds)
+- `MOVISTAR_REFRESH_INTERVAL`: Interval between refresh cycles (default: 60 seconds)
+- `MOVISTAR_WORKAROUND_ENABLED`: Enable/disable the workaround (default: 1)
+
+## Limitations and Considerations
+
+- **Movistar+ Specific**: This fork is optimized specifically for Movistar+ IPTV service
+- **Not for General Use**: Should not be used with other IPTV providers or general multicast routing
+- **Performance Impact**: Minimal overhead due to efficient state management
+- **Network Traffic**: Adds periodic IGMP reports (negligible bandwidth impact)
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Service Not Starting**: Check configuration file syntax and interface names
+2. **No Multicast Traffic**: Verify upstream interface configuration and network connectivity
+3. **Stream Interruptions**: Ensure the workaround is enabled and timers are functioning
+
+### Debug Information
+
+Enable verbose logging to monitor the refresh mechanism:
+
+```bash
+# Run with debug output
+sudo /usr/local/sbin/igmpproxy -vv /etc/igmpproxy.conf
+```
+
+## Contributing
+
+This fork is maintained specifically for Movistar+ IPTV compatibility and is not intended for upstream contribution to the original igmpproxy project. Issues and improvements related to Movistar+ compatibility are welcome.
+
+## Original Project
+
+This fork is based on the original igmpproxy project by Johnny Egeland. For general multicast routing needs, please refer to the original project.
+
+## Disclaimer
+
+This software is provided as-is for Movistar+ IPTV compatibility. Use at your own risk. The maintainer is not responsible for any service interruptions or issues arising from the use of this modified software.
